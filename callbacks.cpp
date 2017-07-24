@@ -14,6 +14,7 @@
 
 #include "util_cuda.hpp"
 #include "util_cupti.hpp"
+#include <zipkin/zipkin.hpp>
 
 CUpti_SubscriberHandle SUBSCRIBER;
 bool SUBSCRIBER_ACTIVE = 0;
@@ -162,6 +163,10 @@ int activateCallbacks() {
   CUPTI_CHECK(cuptierr);
   cuptierr = cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_DRIVER_API);
   CUPTI_CHECK(cuptierr);
+
+  const auto url = "http://127.0.0.1:9411/api/v1/spans";
+  std::unique_ptr<zipkin::HttpConf> conf(new zipkin::HttpConf(url));
+
   return 0;
 }
 
