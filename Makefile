@@ -16,10 +16,11 @@ NVCC=nvcc
 NVCCFLAGS= -std=c++11 -g -arch=sm_35 -Xcompiler -Wall,-Wextra,-fPIC,-fno-omit-frame-pointer
 INC = -I/usr/local/cuda/include \
       -I/usr/local/cuda/extras/CUPTI/include \
-      -I${ZIPKIN_ROOT}/include \
-      -I${THRIFT_ROOT}/include \
-      -I${RDKAFKA_ROOT}/include \
-      -I${FOLLY_ROOT}/include
+      -isystem${ZIPKIN_ROOT}/include \
+      -isystem${THRIFT_ROOT}/include \
+      -isystem${RDKAFKA_ROOT}/include \
+      -isystem${FOLLY_ROOT}/include
+
 LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt -L${ZIPKIN_ROOT}/lib -lzipkin -ldl
 
 all: $(TARGETS)
