@@ -99,7 +99,7 @@ static void handleCudaLaunch(const CUpti_CallbackData *cbInfo) {
   printf("callback: cudaLaunch: done\n");
 }
 
-static void handleCudaMemcpy( const CUpti_CallbackData *cbInfo, zipkin::Span *parent) {
+static void handleCudaMemcpy( const CUpti_CallbackData *cbInfo) {
   // extract API call parameters
   auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
   const uintptr_t dst = (uintptr_t)params->dst;
@@ -133,8 +133,10 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
                        const CUpti_CallbackData *cbInfo) {
   (void)userdata;
 
-  zipkin::Span *span = Tracer::instance().span(cbInfo->functionName);
-  zipkin::Span::Scope scope(*span);
+  zipkin::Span &span = *Tracer::instance().span(""); // This name seems to do nothing
+  span.with_name(cbInfo->functionName);
+  zipkin::Span::Scope scope(span);
+  printf("span: %s\n",span.name().c_str());
 
 
   // Data is collected for the following APIs
@@ -142,7 +144,7 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
   case CUPTI_CB_DOMAIN_RUNTIME_API: {
     switch (cbid) {
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
-      handleCudaMemcpy(cbInfo, span);
+      handleCudaMemcpy(cbInfo);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
       handleCudaLaunch(cbInfo);
@@ -169,8 +171,8 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
     break;
   }
 
-  auto endpoint = Tracer::instance().endpoint("dropdown_name");
-  span->client_send(&endpoint);
+  auto endpoint = Tracer::instance().endpoint();
+  span.client_send(&endpoint);
 }
 
 static int activateCallbacks() {
@@ -198,7 +200,7 @@ static int activateZipkin() {
     zipkin::Span &span = *Tracer::instance().span("trace_name");
     zipkin::Span::Scope scope(span);
 
-    auto endpoint = Tracer::instance().endpoint("dropdown_name");
+    auto endpoint = Tracer::instance().endpoint();
     span.client_send(&endpoint);
 
     span << std::make_pair("some_tag", "0.3." + std::to_string(ii));
