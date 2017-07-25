@@ -99,7 +99,7 @@ static void handleCudaLaunch(const CUpti_CallbackData *cbInfo) {
   printf("callback: cudaLaunch: done\n");
 }
 
-static void handleCudaMemcpy( const CUpti_CallbackData *cbInfo) {
+static void handleCudaMemcpy( const CUpti_CallbackData *cbInfo, zipkin::Span *parent) {
   // extract API call parameters
   auto params = ((cudaMemcpy_v3020_params *)(cbInfo->functionParams));
   const uintptr_t dst = (uintptr_t)params->dst;
@@ -133,17 +133,16 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
                        const CUpti_CallbackData *cbInfo) {
   (void)userdata;
 
-  zipkin::Span &span = *Tracer::instance().span("trace_name");
-  zipkin::Span::Scope scope(span);
-  auto endpoint = Tracer::instance().endpoint("dropdown_name");
-  span.client_send(&endpoint);
+  zipkin::Span *span = Tracer::instance().span(cbInfo->functionName);
+  zipkin::Span::Scope scope(*span);
+
 
   // Data is collected for the following APIs
   switch (domain) {
   case CUPTI_CB_DOMAIN_RUNTIME_API: {
     switch (cbid) {
     case CUPTI_RUNTIME_TRACE_CBID_cudaMemcpy_v3020:
-      handleCudaMemcpy(cbInfo);
+      handleCudaMemcpy(cbInfo, span);
       break;
     case CUPTI_RUNTIME_TRACE_CBID_cudaLaunch_v3020:
       handleCudaLaunch(cbInfo);
@@ -170,6 +169,8 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
     break;
   }
 
+  auto endpoint = Tracer::instance().endpoint("dropdown_name");
+  span->client_send(&endpoint);
 }
 
 static int activateCallbacks() {
@@ -181,6 +182,13 @@ static int activateCallbacks() {
   CUPTI_CHECK(cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_DRIVER_API));
 
 return 0;
+}
+
+void onceSetupZipkin() {
+  static bool done = false;
+  if (!done) {
+    done = true;
+  }
 }
 
 static int activateZipkin() {
@@ -197,7 +205,7 @@ static int activateZipkin() {
     span << std::make_pair("another_tag", std::to_string(ii));
     span << std::make_pair("something_else", "something_else");
   }
-Tracer::instance().collector()->shutdown(std::chrono::seconds(5));
+
 
   return 0;
 }
@@ -206,7 +214,7 @@ Tracer::instance().collector()->shutdown(std::chrono::seconds(5));
 void onceActivateCallbacks() {
   static bool done = false;
   if (!done) {
-    printf("Activating callbacks for first time!\n");
+    printf("Activating callbacks\n");
     activateCallbacks();
     done = true;
   }

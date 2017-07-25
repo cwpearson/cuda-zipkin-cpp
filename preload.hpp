@@ -5,6 +5,7 @@
 
 #define SAME_LD_PRELOAD_BOILERPLATE(name)                                      \
   onceActivateCallbacks();                                                     \
+  onceSetupZipkin();                                                           \
   static name##Func real_##name = nullptr;                                     \
   printf("LD_PRELOAD intercept: " #name "\n");                                 \
   if (real_##name == nullptr) {                                                \
@@ -14,6 +15,7 @@
 
 #define V2_LD_PRELOAD_BOILERPLATE(name)                                        \
   onceActivateCallbacks();                                                     \
+  onceSetupZipkin();                                                           \
   static name##Func real_##name = nullptr;                                     \
   printf("LD_PRELOAD intercept: " #name "\n");                                 \
   if (real_##name == nullptr) {                                                \

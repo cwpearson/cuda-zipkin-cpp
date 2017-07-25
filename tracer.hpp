@@ -27,6 +27,13 @@ public:
   endpoint_addr_.sin_port = htons(port);
     }
 
+    ~Tracer() {
+        fprintf(stderr, "tracer dtor\n");
+          fprintf(stderr, "Shutting down collector...\n");
+        collector()->shutdown(std::chrono::seconds(5));
+  printf("Done!\n");
+    }
+
     zipkin::Span* span(const char *name) {
         return tracer_->span(name);
     }
