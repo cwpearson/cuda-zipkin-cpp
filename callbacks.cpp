@@ -110,6 +110,8 @@ static void handleCudaMemcpy( const CUpti_CallbackData *cbInfo) {
   (void) src;
   (void) kind;
   (void) count;
+
+
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaMemcpy entry\n");
     uint64_t start;
@@ -120,6 +122,7 @@ static void handleCudaMemcpy( const CUpti_CallbackData *cbInfo) {
     uint64_t end;
     CUPTI_CHECK(cuptiDeviceGetTimestamp(cbInfo->context, &end));
     printf("end: %lu\n", end);
+
   } else {
     assert(0 && "How did we get here?");
   }
@@ -129,6 +132,11 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
                        CUpti_CallbackId cbid,
                        const CUpti_CallbackData *cbInfo) {
   (void)userdata;
+
+  zipkin::Span &span = *Tracer::instance().span("trace_name");
+  zipkin::Span::Scope scope(span);
+  auto endpoint = Tracer::instance().endpoint("dropdown_name");
+  span.client_send(&endpoint);
 
   // Data is collected for the following APIs
   switch (domain) {
@@ -179,7 +187,7 @@ static int activateZipkin() {
 
   for (int ii = 0; ii < 2; ii++) {
     // trace_name is the name of the trace
-    zipkin::Span span = *Tracer::instance().span("trace_name");
+    zipkin::Span &span = *Tracer::instance().span("trace_name");
     zipkin::Span::Scope scope(span);
 
     auto endpoint = Tracer::instance().endpoint("dropdown_name");

@@ -29,7 +29,8 @@ LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti \
       -lglog \
       -L${FOLLY_ROOT}/lib -lfolly \
       -L${THRIFT_ROOT}/lib -lthrift \
-      -L${RDKAFKA_ROOT}/lib -lrdkafka++
+      -L${RDKAFKA_ROOT}/lib -lrdkafka++ \
+      -lcurl
 
 all: $(TARGETS)
 
