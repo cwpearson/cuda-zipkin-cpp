@@ -2,7 +2,8 @@ TARGETS = prof.so
 
 OBJECTS = \
 callbacks.o \
-preload_cudart.o
+preload_cudart.o \
+tracer.o
 
 DEPS=$(patsubst %.o,%.d,$(OBJECTS))
 
@@ -21,7 +22,7 @@ INC = -I/usr/local/cuda/include \
       -isystem${RDKAFKA_ROOT}/include \
       -isystem${FOLLY_ROOT}/include
 
-LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt -L${ZIPKIN_ROOT}/lib -lzipkin -ldl
+LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt -ldl ${ZIPKIN_ROOT}/lib/libzipkin.a
 
 all: $(TARGETS)
 
@@ -29,7 +30,7 @@ clean:
 	rm -f $(OBJECTS) $(DEPS) $(TARGETS)
 
 prof.so: $(OBJECTS)
-	$(CXX) -shared $(LIB) $^ -o $@
+	$(CXX) -shared $^ $(LIB) -o $@
 
 %.o : %.cpp
 	cppcheck $<
