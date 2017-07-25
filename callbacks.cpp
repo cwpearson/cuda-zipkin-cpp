@@ -12,13 +12,11 @@
 #include <cuda.h>
 #include <cupti.h>
 
-#include "util_cuda.hpp"
-#include "util_cupti.hpp"
-
 #include <zipkin/zipkin.hpp>
 
-CUpti_SubscriberHandle SUBSCRIBER;
-bool SUBSCRIBER_ACTIVE = 0;
+#include "util_cuda.hpp"
+#include "util_cupti.hpp"
+#include "tracer.hpp"
 
 // FIXME - this should be per-thread most likely
 typedef struct {
@@ -80,6 +78,7 @@ static void handleCudaLaunch(const CUpti_CallbackData *cbInfo) {
 
   // Get the current stream
   const cudaStream_t stream = ConfiguredCall().stream;
+  (void) stream;
 
   for (size_t argIdx = 0; argIdx < ConfiguredCall().args.size();
        ++argIdx) {
@@ -107,6 +106,10 @@ static void handleCudaMemcpy( const CUpti_CallbackData *cbInfo) {
   const uintptr_t src = (uintptr_t)params->src;
   const cudaMemcpyKind kind = params->kind;
   const size_t count = params->count;
+  (void) dst;
+  (void) src;
+  (void) kind;
+  (void) count;
   if (cbInfo->callbackSite == CUPTI_API_ENTER) {
     printf("callback: cudaMemcpy entry\n");
     uint64_t start;
@@ -161,45 +164,32 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
 
 }
 
-int activateCallbacks() {
-  CUptiResult cuptierr;
+static int activateCallbacks() {
 
-  cuptierr = cuptiSubscribe(&SUBSCRIBER, (CUpti_CallbackFunc)callback, nullptr);
-  CUPTI_CHECK(cuptierr);
-  cuptierr = cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_RUNTIME_API);
-  CUPTI_CHECK(cuptierr);
-  cuptierr = cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_DRIVER_API);
-  CUPTI_CHECK(cuptierr);
+  static CUpti_SubscriberHandle SUBSCRIBER;
 
-  const auto url = "http://127.0.0.1:9411/api/v1/spans";
-  std::unique_ptr<zipkin::HttpConf> conf(new zipkin::HttpConf(url));
-  std::unique_ptr<zipkin::HttpCollector> collector(conf->create());
-  std::unique_ptr<zipkin::Tracer> tracer(
-      zipkin::Tracer::create(collector.get()));
+  CUPTI_CHECK(cuptiSubscribe(&SUBSCRIBER, (CUpti_CallbackFunc)callback, nullptr));
+  CUPTI_CHECK(cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_RUNTIME_API));
+  CUPTI_CHECK(cuptiEnableDomain(1, SUBSCRIBER, CUPTI_CB_DOMAIN_DRIVER_API));
 
-  if (collector.get()) {
-    conf.release();
-  }
+return 0;
+}
 
-  sockaddr_in addr;
-  addr.sin_addr.s_addr = inet_addr("127.0.0.1");
-  addr.sin_port = htons(9411);
-
-  // dropdown_name is the one that shows up in the zipkin dropdown
-  const zipkin::Endpoint endpoint("dropdown_name", &addr);
+static int activateZipkin() {
 
   for (int ii = 0; ii < 2; ii++) {
     // trace_name is the name of the trace
-    zipkin::Span &span = *tracer->span("trace_name");
+    zipkin::Span span = *Tracer::instance().span("trace_name");
     zipkin::Span::Scope scope(span);
 
+    auto endpoint = Tracer::instance().endpoint("dropdown_name");
     span.client_send(&endpoint);
 
     span << std::make_pair("some_tag", "0.3." + std::to_string(ii));
     span << std::make_pair("another_tag", std::to_string(ii));
     span << std::make_pair("something_else", "something_else");
   }
-collector->shutdown(std::chrono::seconds(5));
+Tracer::instance().collector()->shutdown(std::chrono::seconds(5));
 
   return 0;
 }
