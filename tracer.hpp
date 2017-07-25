@@ -47,6 +47,10 @@ class Tracer
         fprintf(stderr, "tracer dtor done!\n");
     }
 
+    zipkin::Span *global()
+    {   return global_span_;
+    }
+
     zipkin::Span *span(const char *name)
     {   return global_span_->span(name);
     }

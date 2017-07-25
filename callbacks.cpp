@@ -128,16 +128,27 @@ static void handleCudaMemcpy( const CUpti_CallbackData *cbInfo) {
   }
 }
 
+std::vector<zipkin::Span*> spanStack_;
+
+zipkin::Span *stack_back() {
+  if (spanStack_.empty()) {
+    return Tracer::instance().global();
+  } else {
+    return spanStack_.back();
+  }
+}
+
 void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
                        CUpti_CallbackId cbid,
                        const CUpti_CallbackData *cbInfo) {
   (void)userdata;
 
-  zipkin::Span &span = *Tracer::instance().span(""); // This name seems to do nothing
-  span.with_name(cbInfo->functionName);
-  zipkin::Span::Scope scope(span);
-  printf("span: %s\n",span.name().c_str());
-
+  if (cbInfo->callbackSite == CUPTI_API_ENTER) {
+    zipkin::Span *span  = stack_back()->span(""); // This name seems to do nothing
+    span->with_name(cbInfo->functionName);
+    spanStack_.push_back(span);
+  }
+  // zipkin::Span::Scope scope(*span);
 
   // Data is collected for the following APIs
   switch (domain) {
@@ -171,8 +182,14 @@ void CUPTIAPI callback(void *userdata, CUpti_CallbackDomain domain,
     break;
   }
 
+  if (cbInfo->callbackSite == CUPTI_API_EXIT) {
+    zipkin::Span *span  = stack_back();
   auto endpoint = Tracer::instance().endpoint();
-  span.client_send(&endpoint);
+  span->client_send(&endpoint);
+  span->submit();
+  spanStack_.pop_back();
+  }
+  
 }
 
 static int activateCallbacks() {
