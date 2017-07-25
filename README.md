@@ -1,18 +1,18 @@
 # cuda-zipkin-cpp
 
+This is an example of how to combine CUPTI, LD_PRELOAD, zipkin-cpp, and OpenZipkin to record a zipkin trace for every CUDA API call.
+
 ## Setup
 
 Install [zipkin-cpp](https://github.com/flier/zipkin-cpp)
 
 Install the CUDA sdk.
 
-Build the vector add example
+Build the vector add example (lifted from the CUDA SDK)
 
     cd examples/vectorAdd && make
 
 Install [docker](https://www.docker.com/get-docker)
-
-
 
 ## Using
 
