@@ -22,7 +22,14 @@ INC = -I/usr/local/cuda/include \
       -isystem${RDKAFKA_ROOT}/include \
       -isystem${FOLLY_ROOT}/include
 
-LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt -ldl ${ZIPKIN_ROOT}/lib/libzipkin.a
+LIB = -L/usr/local/cuda/extras/CUPTI/lib64 -lcupti \
+      -L/usr/local/cuda/lib64 -lcuda -lcudart -lcudadevrt \
+      -ldl \
+      ${ZIPKIN_ROOT}/lib/libzipkin.a \
+      -lglog \
+      -L${FOLLY_ROOT}/lib -lfolly \
+      -L${THRIFT_ROOT}/lib -lthrift \
+      -L${RDKAFKA_ROOT}/lib -lrdkafka++
 
 all: $(TARGETS)
 
@@ -30,7 +37,7 @@ clean:
 	rm -f $(OBJECTS) $(DEPS) $(TARGETS)
 
 prof.so: $(OBJECTS)
-	$(CXX) -shared $^ $(LIB) -o $@
+	$(CXX) -shared $^ -o $@ $(LIB)
 
 %.o : %.cpp
 	cppcheck $<
